@@ -42,17 +42,36 @@ export class FormulaEvaluator {
                                Bilbo
     * 
    */
+
   evaluate(formula: FormulaType) {
+    this._errorMessage = "";
+
     // when the formula is empty
     if (formula.length === 0) {
         this._errorMessage = ErrorMessages.emptyFormula;
         return;
     }
 
+    // when the formula starts or ends with an operator
+    if(['+', '-', '*', '/'].includes(formula[0])||['+', '-', '*', '/'].includes(formula[formula.length-1])){
+      this._errorMessage = ErrorMessages.invalidFormula;
+      if(formula.length === 2 && this.isNumber(formula[0])){
+        this._result = Number(formula[0]);
+        return;
+      }else if(formula.length === 3 && this.isNumber(formula[0]) 
+      && !this.isNumber(formula[1])&& !this.isNumber(formula[2])){
+        this._result = Number(formula[0]);
+        return;
+      }else if(formula.length === 4 && this.isNumber(formula[0]) 
+      && !this.isNumber(formula[1])&& this.isNumber(formula[2]) 
+      && !this.isNumber(formula[3])){
+        formula.pop()
+      }
+    }
+
     //two stacks for values and operators
     const values: number[] = [];
     const operators: string[] = [];
-    this._errorMessage = "";
 
     for (const token of formula) {
         if (this._errorOccured) break;
@@ -74,8 +93,11 @@ export class FormulaEvaluator {
                 this._errorMessage = ErrorMessages.missingParentheses;
                 this._errorOccured = true;
                 break;
-            }
-            while (operators.length && operators[operators.length - 1] !== '(') {
+            }else if(values.length === 0){
+                this._errorMessage = ErrorMessages.invalidFormula;
+                this._errorOccured = true;
+                break;
+            }while (operators.length && operators[operators.length - 1] !== '(') {
                 this.compute(values, operators);
             }
             operators.pop();
@@ -106,7 +128,7 @@ export class FormulaEvaluator {
         this._errorOccured = true;
     }
 
-    this._result = !this._errorOccured ? values.pop() || 0 : 0;
+    this._result = values.pop()! || 0;
   }
   
   private hasPrecedence(op1: string, op2: string): boolean {
@@ -134,6 +156,7 @@ export class FormulaEvaluator {
         if (b === 0) {
           this._errorMessage = ErrorMessages.divideByZero;
           this._errorOccured = true;
+          values.push(Infinity)
           return;
         }
         values.push(a / b);
