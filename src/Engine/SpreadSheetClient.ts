@@ -282,8 +282,25 @@ class SpreadSheetClient {
             });
     }
 
+    /**
+     * AC fix
+     * clear all formulas
+     */
     public clearFormula(): void {
-        return;
+        const requestClearFormulaURL = `${this._baseURL}/document/clear/formula/${this._documentName}`;
+
+        fetch(requestClearFormulaURL, {
+            method: 'PUT',
+            headers: {
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ "userName": this._userName })
+        })
+            .then(response => {
+                return response.json() as Promise<DocumentTransport>; 
+            }).then((document: DocumentTransport) => {
+                this._updateDocument(document);
+         });
     }
 
 
