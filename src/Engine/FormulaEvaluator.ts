@@ -42,43 +42,106 @@ export class FormulaEvaluator {
                                Bilbo
     * 
    */
-
   evaluate(formula: FormulaType) {
+    // when the formula is empty
+    if (formula.length === 0) {
+        this._errorMessage = ErrorMessages.emptyFormula;
+        return;
+    }
 
-
-    // set the this._result to the length of the formula
-
-    this._result = formula.length;
+    //two stacks for values and operators
+    const values: number[] = [];
+    const operators: string[] = [];
     this._errorMessage = "";
 
-    switch (formula.length) {
-      case 0:
-        this._errorMessage = ErrorMessages.emptyFormula;
-        break;
-      case 7:
-        this._errorMessage = ErrorMessages.partial;
-        break;
-      case 8:
-        this._errorMessage = ErrorMessages.divideByZero;
-        break;
-      case 9:
-        this._errorMessage = ErrorMessages.invalidCell;
-        break;
-      case 10:
-        this._errorMessage = ErrorMessages.invalidFormula;
-        break;
-      case 11:
-        this._errorMessage = ErrorMessages.invalidNumber;
-        break;
-      case 12:
-        this._errorMessage = ErrorMessages.invalidOperator;
-        break;
-      case 13:
+    for (const token of formula) {
+        if (this._errorOccured) break;
+
+        if (this.isNumber(token)) {
+            values.push(Number(token));
+        } else if (this.isCellReference(token)) {
+            const [value, error] = this.getCellValue(token);
+            if (error) {
+                this._errorMessage = error;
+                this._errorOccured = true;
+                break;
+            }
+            values.push(value);
+        } else if (token === '(') {
+            operators.push(token);
+        } else if (token === ')') {
+            if (!operators.includes('(')) {
+                this._errorMessage = ErrorMessages.missingParentheses;
+                this._errorOccured = true;
+                break;
+            }
+            while (operators.length && operators[operators.length - 1] !== '(') {
+                this.compute(values, operators);
+            }
+            operators.pop();
+        } else { 
+            if (!['+', '-', '*', '/'].includes(token)) {
+                this._errorMessage = ErrorMessages.invalidOperator;
+                this._errorOccured = true;
+                break;
+            }
+            while (operators.length && this.hasPrecedence(token, operators[operators.length - 1])) {
+                this.compute(values, operators);
+            }
+            operators.push(token);
+        }
+    }
+
+    if (!this._errorOccured && operators.includes('(')) {
         this._errorMessage = ErrorMessages.missingParentheses;
+        this._errorOccured = true;
+    }
+
+    while (!this._errorOccured && operators.length) {
+        this.compute(values, operators);
+    }
+
+    if (!this._errorOccured && values.length > 1) {
+        this._errorMessage = ErrorMessages.partial;
+        this._errorOccured = true;
+    }
+
+    this._result = !this._errorOccured ? values.pop() || 0 : 0;
+  }
+  
+  private hasPrecedence(op1: string, op2: string): boolean {
+    if (op2 === '(' || op2 === ')') return false;
+    if ((op1 === '*' || op1 === '/') && (op2 === '+' || op2 === '-')) return false;
+    return true;
+  }
+
+  private compute(values: number[], operators: string[]): void {
+    const op = operators.pop();
+    const b = values.pop()!;
+    const a = values.pop()!;
+
+    switch (op) {
+      case '+':
+        values.push(a + b);
+        break;
+      case '-':
+        values.push(a - b);
+        break;
+      case '*':
+        values.push(a * b);
+        break;
+      case '/':
+        if (b === 0) {
+          this._errorMessage = ErrorMessages.divideByZero;
+          this._errorOccured = true;
+          return;
+        }
+        values.push(a / b);
         break;
       default:
-        this._errorMessage = "";
-        break;
+        this._errorMessage = ErrorMessages.invalidOperator;
+        this._errorOccured = true;
+        return;
     }
   }
 
