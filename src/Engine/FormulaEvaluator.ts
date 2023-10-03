@@ -19,30 +19,10 @@ export class FormulaEvaluator {
   }
 
   /**
-    * place holder for the evaluator.   I am not sure what the type of the formula is yet 
-    * I do know that there will be a list of tokens so i will return the length of the array
-    * 
-    * I also need to test the error display in the front end so i will set the error message to
-    * the error messages found In GlobalDefinitions.ts
-    * 
-    * according to this formula.
-    * 
-    7 tokens partial: "#ERR",
-    8 tokens divideByZero: "#DIV/0!",
-    9 tokens invalidCell: "#REF!",
-  10 tokens invalidFormula: "#ERR",
-  11 tokens invalidNumber: "#ERR",
-  12 tokens invalidOperator: "#ERR",
-  13 missingParentheses: "#ERR",
-  0 tokens emptyFormula: "#EMPTY!",
-
-                    When i get back from my quest to save the world from the evil thing i will fix.
-                      (if you are in a hurry you can fix it yourself)
-                               Sincerely 
-                               Bilbo
-    * 
+   * used to evaluate a formula
+   * @param formula the formula to be evaluated
+   * @returns void
    */
-
   evaluate(formula: FormulaType) {
     this._errorMessage = "";
 
@@ -72,7 +52,7 @@ export class FormulaEvaluator {
     //two stacks for values and operators
     const values: number[] = [];
     const operators: string[] = [];
-
+    //loop through the formula
     for (const token of formula) {
         if (this._errorOccured) break;
 
@@ -113,16 +93,16 @@ export class FormulaEvaluator {
             operators.push(token);
         }
     }
-
+    // if there is an error or there are still operators left
     if (!this._errorOccured && operators.includes('(')) {
         this._errorMessage = ErrorMessages.missingParentheses;
         this._errorOccured = true;
     }
-
+    // if (!this._errorOccured && operators.includes(')')) {
     while (!this._errorOccured && operators.length) {
         this.compute(values, operators);
     }
-
+    // if there is an error or there are still values left
     if (!this._errorOccured && values.length > 1) {
         this._errorMessage = ErrorMessages.partial;
         this._errorOccured = true;
@@ -131,12 +111,24 @@ export class FormulaEvaluator {
     this._result = values.pop()! || 0;
   }
   
+  /**
+   * compares the precedence of two operators
+   * @param op1 operator 1
+   * @param op2 operator 2
+   * @returns the result of the comparison
+   */
   private hasPrecedence(op1: string, op2: string): boolean {
     if (op2 === '(' || op2 === ')') return false;
     if ((op1 === '*' || op1 === '/') && (op2 === '+' || op2 === '-')) return false;
     return true;
   }
 
+  /**
+   * computes the result of the operation
+   * @param values the values stack
+   * @param operators the operators stack
+   * @returns void
+   */
   private compute(values: number[], operators: string[]): void {
     const op = operators.pop();
     const b = values.pop()!;
@@ -153,6 +145,7 @@ export class FormulaEvaluator {
         values.push(a * b);
         break;
       case '/':
+        // if the denominator is 0
         if (b === 0) {
           this._errorMessage = ErrorMessages.divideByZero;
           this._errorOccured = true;
@@ -161,6 +154,7 @@ export class FormulaEvaluator {
         }
         values.push(a / b);
         break;
+      // if the operator is not one of the above
       default:
         this._errorMessage = ErrorMessages.invalidOperator;
         this._errorOccured = true;
@@ -168,10 +162,16 @@ export class FormulaEvaluator {
     }
   }
 
+  /**
+   * return the error message
+   */
   public get error(): string {
     return this._errorMessage
   }
 
+  /**
+   * return the result of the formula
+   */
   public get result(): number {
     return this._result;
   }
